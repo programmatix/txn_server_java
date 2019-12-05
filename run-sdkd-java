@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Kill any existing sdkd processes. This is a limitation and should be
+# fixed with a proper pylib implementation
+
+for pid in $(pgrep -f 'java.+-jar.*sdkd-java'); do
+	if [ $pid -ne $$ ]; then	
+		kill -9 $pid;
+	fi
+done
+
+SDKD_ROOT=$(dirname $0)
+cd $SDKD_ROOT
+
+
+# If we weren't passed a jar file, assume it's relative to our own directory
+JAR=$1
+JAR_DEFAULT=""
+if [ -z "$JAR" -o "${JAR: -3}" != "jar" ]; then
+	JAR_DEFAULT=1
+	JAR=$(dirname $0)/target/sdkd-java-0.5-SNAPSHOT.jar
+	#JAR=$(dirname $0)/../sdkd_exec.jar
+fi
+
+if [ ! -e "$JAR" ] && [ -n "$JAR_DEFAULT" ]; then
+	echo "Default JAR '$JAR' not found. Building" >&2
+	MVN_MIRROR="http://www.gtlib.gatech.edu/pub/apache/maven/maven-3/3.0.4/binaries"
+	MVN_DIST="apache-maven-3.0.4"
+	MVN=$(which mvn)
+
+	if [ -z "$MVN" ]; then
+		echo "mvn not found. Downloading" >&2
+		wget "$MVN_MIRROR/$MVN_DIST-bin.tar.gz";
+		tar xf $MVN_DIST-bin.tar.gz
+		MVN=$MVN_DIST/bin/mvn
+	fi
+
+	$MVN package
+fi
+
+if [ ! -e "$JAR" ]; then
+	echo "Still cannot find '$JAR'. Exit"
+	exit 1
+fi
+
+JAR_ARGS=${*:2}
+
+if [ "$JAR_DEFAULT" == "1" ]; then
+    JAR_ARGS=${*:1}
+fi
+
+if [ -z "$JAR_ARGS" ]; then
+    JAR_ARGS="-l 8050 -shared 100 -sync true"
+fi
+
+java -ea -jar $JAR $JAR_ARGS

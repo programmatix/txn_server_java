@@ -1,0 +1,6 @@
+stash
+sdkd-java
+spymemcached
+couchbase-java-client
+*.jar
+

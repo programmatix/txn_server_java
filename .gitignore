@@ -1,0 +1,7 @@
+/src/main/java/com/couchbase/sdkd/GatBug.java
+target/*
+/pkgcache/target/
+*.pyc
+.idea/*
+*.iml
+/target

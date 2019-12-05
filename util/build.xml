@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project SDKD">
+
+    <property name="name" value="sdkd"/>
+    <property name="copyright" value="2014 Deepti Dawar" />
+    <property name="group" value="couchbase" />
+
+    <property name="src.dir" value="${basedir}/sdkd-java/src"/>
+    <property name="classes.dir" value="${basedir}/sdkd-java/target/classes"/>
+    <property name="main.class" value="com.couchbase.sdkd.Daemon"/>
+    <property name="gson.lib" value="${user.home}/.m2/repository/com/google/code/gson/gson"/>
+    <property name="jcommander.lib" value="${user.home}/.m2/repository/com/beust/jcommander"/>
+    <property name="couchbase.cli.lib" value="${basedir}/couchbase-java-client/target"/>
+    <property name="jvm.core.lib" value="${basedir}/couchbase-jvm-core/target"/>
+    <property name="rxjava.core" value="${user.home}/.m2/repository/io/reactivex/rxjava"/>
+    <property name="netty" value="${user.home}/.m2/repository/io/netty"/>
+    <property name="slf4j" value="${user.home}/.m2/repository/org/slf4j/slf4j-api"/>
+    <property name="junit.lib" value="${user.home}/.m2/repository/junit/junit"/>
+    <property name="jsch.lib" value="${user.home}/.m2/repository/com/jcraft/jsch"/>
+    <property name="org" value="${basedir}/stash/.m2/repository/org"/>
+    <property name="json-simple.lib" value="${user.home}/.m2/repository/com/googlecode/json-simple/json-simple/1.1"/>
+    
+    <target name="create_run_jar">
+        <jar destfile="${basedir}/sdkd_exec.jar" filesetmanifest="mergewithoutmain">
+            <fileset dir="${basedir}/sdkd-java/target/classes"/>
+            <archives>
+                <zips>
+                    <fileset excludes="META-INF/*.SF" dir="${gson.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${netty}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${jcommander.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF **/*-sources.jar **/*-javadoc.jar" dir="${couchbase.cli.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF **/*-sources.jar **/*-javadoc.jar" dir="${jvm.core.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${rxjava.core}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${slf4j}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${junit.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${jsch.lib}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${org}" includes="**/*.jar"/>
+                    <fileset excludes="META-INF/*.SF" dir="${json-simple.lib}" includes="**/*.jar"/>
+                </zips>
+            </archives>
+            <manifest>
+                <attribute name="Main-Class" value="com.couchbase.sdkd.Daemon"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+        </jar>
+    </target>
+</project>
