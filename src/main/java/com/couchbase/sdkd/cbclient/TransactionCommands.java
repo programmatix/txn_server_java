@@ -75,9 +75,7 @@ public class TransactionCommands {
         try{
             docContent = JsonObject.create().put("mutated", 0);
             for (int i = 0; i < req.getNumDocs(); i++) {
-                String docId= "Test" + i;
-                txnKeys.add(docId);
-                txn.run(ctx->ctx.insert(defaultCollection, "Test" + docId, docContent));
+                txnInsert( txn,"Test"+i);
             }
             return true;
         }
@@ -87,20 +85,23 @@ public class TransactionCommands {
         }
     }
 
+    public boolean txnInsert(Transactions txn,String docId){
+        try{
+                txn.run(ctx->ctx.insert(defaultCollection, "Test" + docId, docContent));
+            return true;
+        }
+        catch(Exception e){
+            System.out.println("Exception inserting documents: "+e);
+            return false;
+        }
+    }
 
     public boolean txnUpdate(Transactions txn){
         System.out.println("Updating Documents");
         try {
             int i = 0;
             while (i < req.getNumDocs()) {
-                String docID= txnKeys.get(i);
-                int finalI = i;
-                txn.run(ctx->{
-                    TransactionGetResult doc2=ctx.getOptional(defaultCollection, docID).get();
-                        JsonObject content = doc2.contentAs(JsonObject.class);
-                        content.put("mutated", finalI);
-                        ctx.replace(doc2, content);
-                    });
+                txnUpdate( txn, txnKeys.get(i));
                 i++;
             }
             return true;
@@ -110,20 +111,43 @@ public class TransactionCommands {
         }
     }
 
+    public boolean txnUpdate(Transactions txn,String docID){
+        System.out.println("Updating Documents");
+        try {
+                txn.run(ctx->{
+                    TransactionGetResult doc2=ctx.getOptional(defaultCollection, docID).get();
+                    JsonObject content = doc2.contentAs(JsonObject.class);
+                    content.put("mutated", "newVal");
+                    ctx.replace(doc2, content);
+                });
+            return true;
+        } catch (Exception e) {
+            System.out.println("Exception Updating the documents: " + e);
+            return false;
+        }
+    }
 
     public boolean txnDelete(Transactions txn){
         System.out.println("Deleting Documents");
         try {
             int i = txnKeys.size();
             while (i > txnKeys.size() - req.getNumDocs()) {
-                String docID= txnKeys.get(i-1);
-                int finalI=i;
-                txn.run(ctx->{
-                    TransactionGetResult doc=ctx.getOptional(defaultCollection, docID).get();
-                    ctx.remove(doc);
-                });
+                txnDelete(txn, txnKeys.get(i-1));
                 i--;
             }
+            return true;
+        } catch (Exception e) {
+            System.out.println("Exception Deleting the documents: " + e);
+            return false;
+        }
+    }
+
+    public boolean txnDelete(Transactions txn,String docId){
+        try {
+                txn.run(ctx->{
+                    TransactionGetResult doc=ctx.getOptional(defaultCollection, docId).get();
+                    ctx.remove(doc);
+                });
             return true;
         } catch (Exception e) {
             System.out.println("Exception Deleting the documents: " + e);
