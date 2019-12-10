@@ -41,25 +41,6 @@ import com.couchbase.transactions.util.TransactionMock;
 public class SimpleTransaction {
 
 
-
-    public Transactions createTansaction(Cluster cluster, TransactionConfig config) {
-        Event.Severity logLevel = Event.Severity.ERROR;
-        cluster.environment().eventBus().subscribe(event -> {
-            if (event instanceof TransactionEvent) {
-                TransactionEvent te = (TransactionEvent) event;
-                if (te.severity().ordinal() >= logLevel.ordinal()) {
-                    System.out.println(te.getClass().getSimpleName() + ": " + event.description());
-
-                    if (te.hasLogs()) {
-                        te.logs().forEach(log -> {
-                            System.out.println(te.getClass().getSimpleName() + " log: " + log.toString());
-                        });
-                    }
-                }
-            }
-        });
-        return Transactions.create(cluster, config);
-    }
     Queue<String> queue=new LinkedList<>();
 
     public TransactionConfig createTransactionConfig(int expiryTimeout, int changedurability) {
@@ -85,6 +66,155 @@ public class SimpleTransaction {
 
         return config.expirationTime(Duration.of(expiryTimeout, ChronoUnit.SECONDS)).build();
     }
+
+    public Transactions createTansactionFactory(Cluster cluster, TransactionConfig config) {
+        Event.Severity logLevel = Event.Severity.ERROR;
+        cluster.environment().eventBus().subscribe(event -> {
+            if (event instanceof TransactionEvent) {
+                TransactionEvent te = (TransactionEvent) event;
+                if (te.severity().ordinal() >= logLevel.ordinal()) {
+                    System.out.println(te.getClass().getSimpleName() + ": " + event.description());
+
+                    if (te.hasLogs()) {
+                        te.logs().forEach(log -> {
+                            System.out.println(te.getClass().getSimpleName() + " log: " + log.toString());
+                        });
+                    }
+                }
+            }
+        });
+        return Transactions.create(cluster, config);
+    }
+
+
+
+    public Transactions createMockTansactionFactory(Cluster cluster, TransactionConfig config, String operation, String docId)
+    {
+        Transactions transactions = Transactions.create(cluster, config);
+        try{
+            AtomicBoolean first = new AtomicBoolean(true);
+            TransactionMock mock = new TransactionMock();
+            TestAttemptContextFactory factory = new TestAttemptContextFactory(mock);
+            transactions.reactive().setAttemptContextFactory(factory);
+
+            if (operation.equals("afterStagedInsertComplete")) {
+                mock.afterStagedInsertComplete = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("afterStagedReplaceComplete")) {
+                mock.afterStagedReplaceComplete = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("afterStagedRemoveComplete")) {
+                mock.afterStagedRemoveComplete = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("afterDocCommitted")) {
+                System.out.println("afterDocCommitted from mocktxn");
+                mock.afterDocCommitted = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        System.out.println("afterDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
+                        throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
+                                "writes");}
+                    //return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("afterGetComplete")) {
+                mock.afterGetComplete = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeDocCommitted")) {
+                System.out.println("beforeDocCommitted from mocktxn");
+                mock.beforeDocCommitted = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        System.out.println("beforeDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
+                        throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
+                                "writes");}
+                    // return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeStagedInsert")) {
+                mock.beforeStagedInsert = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeStagedReplace")) {
+                mock.beforeStagedReplace = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeStagedRemove")) {
+                mock.beforeStagedRemove = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeDocRemoved")) {
+                mock.beforeDocRemoved = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+
+            if (operation.equals("beforeDocRolledBack")) {
+                mock.beforeDocRolledBack = (ctx, id) -> {
+                    if (first.get() && id.equals(docId))  {
+                        first.set(false);
+                        return Mono.error(new TemporaryFailureException());}
+                    else return Mono.just(1);
+                };
+            }
+        }
+        catch (TransactionFailed err) {
+            // This per-txn log allows the app to only log failures
+            System.out.println("Create mock transaction failed");
+
+        }
+       return transactions;
+    }
+
+
+
+
 
 
     public List<LogDefer> RunTransaction(Transactions transaction, List<Collection> collections, List<Tuple2<String, JsonObject>> Createkeys, List<String> Updatekeys,
@@ -311,11 +441,11 @@ public class SimpleTransaction {
 
     }
 
-    public List<LogDefer> MockRunTransaction(Cluster cluster, Transactions transactions, Collection collection, List<Tuple2<String,
+    public List<LogDefer> MockRunTransaction(Cluster cluster, TransactionConfig config, Collection collection, List<Tuple2<String,
             JsonObject>> Createkeys, List<String> Updatekeys, List<String> Deletekeys, Boolean commit, String operation, String docId)
     {
         List<LogDefer> res = new ArrayList<LogDefer>();
-        try {
+        try (Transactions transactions = Transactions.create(cluster, config)) {
 
             AtomicBoolean first = new AtomicBoolean(true);
             TransactionMock mock = new TransactionMock();
