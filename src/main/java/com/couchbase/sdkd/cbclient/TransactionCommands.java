@@ -7,6 +7,7 @@ import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.sdkd.util.ProtocolException;
 import com.couchbase.sdkd.util.SimpleTransaction;
+import com.couchbase.sdkd.util.Strings;
 import com.couchbase.transactions.TransactionGetResult;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfig;
@@ -70,12 +71,16 @@ public class TransactionCommands {
         return txn;
     }
 
-    public boolean txnInsert(Transactions txn){
+    public boolean txnInsert(Transactions txn,boolean force){
         System.out.println("Inserting documents");
         try{
-            docContent = JsonObject.create().put("mutated", 0);
+            docContent = JsonObject.create().put(Strings.CONTENT_NAME, Strings.DEFAULT_CONTENT_VALUE);
             for (int i = 0; i < req.getNumDocs(); i++) {
-                txnInsert( txn,"Test"+i);
+                txnKeys.add(Strings.DEFAULT_KEY+i);
+                if(force){
+                    txnDelete(txn,Strings.DEFAULT_KEY+i);
+                }
+                txnInsert( txn,Strings.DEFAULT_KEY+i);
             }
             return true;
         }
@@ -87,7 +92,7 @@ public class TransactionCommands {
 
     public boolean txnInsert(Transactions txn,String docId){
         try{
-                txn.run(ctx->ctx.insert(defaultCollection, "Test" + docId, docContent));
+                txn.run(ctx->ctx.insert(defaultCollection, docId, docContent));
             return true;
         }
         catch(Exception e){
@@ -99,10 +104,8 @@ public class TransactionCommands {
     public boolean txnUpdate(Transactions txn){
         System.out.println("Updating Documents");
         try {
-            int i = 0;
-            while (i < req.getNumDocs()) {
+            for(int i =0;i<req.getNumDocs();i++){
                 txnUpdate( txn, txnKeys.get(i));
-                i++;
             }
             return true;
         } catch (Exception e) {
@@ -112,12 +115,11 @@ public class TransactionCommands {
     }
 
     public boolean txnUpdate(Transactions txn,String docID){
-        System.out.println("Updating Documents");
         try {
                 txn.run(ctx->{
                     TransactionGetResult doc2=ctx.getOptional(defaultCollection, docID).get();
                     JsonObject content = doc2.contentAs(JsonObject.class);
-                    content.put("mutated", "newVal");
+                    content.put(Strings.CONTENT_NAME, Strings.UPDATED_CONTENT_VALUE);
                     ctx.replace(doc2, content);
                 });
             return true;
@@ -162,7 +164,17 @@ public class TransactionCommands {
             }else{
                 txn.run(ctx->ctx.rollback());
             }
+            return true;
+        }catch(Exception e){
+            System.out.println("Exception while commiting: "+e);
+            return false;
+        }
 
+    }
+
+    public boolean txnClose(Transactions txn){
+        try{
+            txn.close();
             return true;
         }catch(Exception e){
             System.out.println("Exception while commiting: "+e);
@@ -173,31 +185,7 @@ public class TransactionCommands {
 
 
 
-    public void generateTxnDocuments(Transactions txn, String name, boolean commit, boolean sync, int batchsize) throws ProtocolException {
-        SimpleTransaction st = new SimpleTransaction();
-        List<Tuple2<String, JsonObject>> createKeys = new LinkedList<>();
 
-        for (int i = 0; i < batchsize; i++) {
-            String docId = "Test" + name + "Batch" + i;
-            synchronized (this) {
-                txnKeys.add(docId);
-            }
-            Tuple2<String, JsonObject> pair = Tuples.of(docId, docContent);
-            createKeys.add(pair);
-        }
-        st.RunTransaction(txn, ll, createKeys, UpdateKeys, DeleteKeys, commit, sync, 0);
-    }
-
-
-    public void UpdateTxnDocuments(Transactions txn, List<String> updateKeys, List<String> deleteKeys) {
-        SimpleTransaction st = new SimpleTransaction();
-        List<Tuple2<String, JsonObject>> dummycreateKeys = new LinkedList<>();
-        try {
-            st.RunTransaction(txn, ll, dummycreateKeys, updateKeys, deleteKeys, false, false, 1);
-        } catch (Exception e) {
-            System.out.println("Exception updating the docs:" + e);
-        }
-    }
 
 
 

@@ -125,14 +125,10 @@ public class SimpleTransaction {
             }
 
             if (operation.equals("afterDocCommitted")) {
-                System.out.println("afterDocCommitted from mocktxn");
                 mock.afterDocCommitted = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        System.out.println("afterDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
+                    if (id.equals(docId))  {
                         throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
                                 "writes");}
-                    //return Mono.error(new TemporaryFailureException());}
                     else return Mono.just(1);
                 };
             }
@@ -149,13 +145,10 @@ public class SimpleTransaction {
             if (operation.equals("beforeDocCommitted")) {
                 System.out.println("beforeDocCommitted from mocktxn");
                 mock.beforeDocCommitted = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        System.out.println("beforeDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
-                        throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
-                                "writes");}
-                    // return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
+                    if (id.equals(docId)) {
+                        System.out.println("beforeDocCommitted from mocktxn returning TemporaryFailureException: " + docId);
+                        return Mono.error(new TemporaryFailureException());
+                    } else return Mono.just(1);
                 };
             }
 
@@ -205,103 +198,14 @@ public class SimpleTransaction {
             }
         }
         catch (TransactionFailed err) {
-            // This per-txn log allows the app to only log failures
             System.out.println("Create mock transaction failed");
-
+            transactions = null;
         }
-       return transactions;
+        return transactions;
     }
 
 
 
-
-
-
-    public List<LogDefer> RunTransaction(Transactions transaction, List<Collection> collections, List<Tuple2<String, JsonObject>> Createkeys, List<String> Updatekeys,
-                                         List<String> Deletekeys, Boolean commit, boolean sync, int updatecount) {
-        List<LogDefer> res = new ArrayList<LogDefer>();
-//		synchronous API - transactions
-        if (sync) {
-            try {
-
-                TransactionResult result = transaction.run(ctx -> {
-                    //				creation of docs
-
-                    for (Collection bucket:collections) {
-                        for (Tuple2<String, JsonObject> document : Createkeys) {
-                            TransactionGetResult doc=ctx.insert(bucket, document.getT1(), document.getT2());
-                        }
-
-                    }
-                    //				update of docs
-                    for (String key: Updatekeys) {
-                        for (Collection bucket:collections) {
-                            try {
-                                //  System.out.println("Updating Key:"+key);
-                                TransactionGetResult doc2=ctx.getOptional(bucket, key).get();
-                                for (int i=1; i<=updatecount; i++) {
-                                    JsonObject content = doc2.contentAs(JsonObject.class);
-                                    content.put("mutated", i );
-                                    ctx.replace(doc2, content);
-//										TransactionGetResult doc1=ctx.get(bucket, key).get();
-//										JsonObject read_content = doc1.contentAs(JsonObject.class);
-                                }
-                            }
-                            catch (TransactionFailed err) {
-                                System.out.println("Document not present");
-                            }
-                        }
-                    }
-                    //			   delete the docs
-                    for (String key: Deletekeys) {
-                        for (Collection bucket:collections) {
-                            try {
-                                TransactionGetResult doc1=ctx.getOptional(bucket, key).get();
-                                ctx.remove(doc1);
-                            }
-                            catch (TransactionFailed err) {
-                                System.out.println("Document not present");
-                            }
-                        }
-                    }
-                    //				commit ot rollback the docs
-                    if (commit) {  ctx.commit(); }
-                    else { ctx.rollback(); 	 }
-
-//					transaction.close();
-
-
-                });
-//				result.log().logs().forEach(System.err::println);
-
-            }
-            catch (TransactionFailed err) {
-                res = err.result().log().logs();
-                /*if (res.toString().contains("DurabilityImpossibleException")) {
-                    System.out.println("DurabilityImpossibleException seen"); }
-                else {
-                    for (LogDefer e : ((TransactionFailed) err).result().log().logs()) {
-                        System.out.println(e);
-                    }
-                }
-
-                 */
-            }
-        }
-        else {
-            for (Collection collection:collections) {
-                if (Createkeys.size() > 0) {
-                    res = multiInsertSingelTransaction(transaction, collection, Createkeys, commit); }
-                if (Updatekeys.size() > 0) {
-                    res = multiUpdateSingelTransaction(transaction, collection, Updatekeys, commit);}
-                if (Deletekeys.size() > 0) {
-                    res = multiDeleteSingelTransaction(transaction, collection, Deletekeys, commit);
-                }
-            }
-
-        }
-        return res;
-    }
 
 
     public List<Tuple2<String, JsonObject>> ReadTransaction(Transactions transaction, List<Collection> collections, List<String> Readkeys) {
@@ -334,272 +238,6 @@ public class SimpleTransaction {
         return res;
     }
 
-
-
-    public List<LogDefer> MockRunTransaction(Cluster cluster, TransactionConfig config, Collection collection, List<Tuple2<String,
-            JsonObject>> Createkeys, Boolean commit, String operation)
-    {
-        AtomicInteger attempt = new AtomicInteger(0);
-        AtomicBoolean first = new AtomicBoolean(true);
-        List<LogDefer> res = new ArrayList<LogDefer>();
-
-        try (Transactions transactions = Transactions.create(cluster, config)) {
-
-            TransactionMock mock = new TransactionMock();
-            TestAttemptContextFactory factory = new TestAttemptContextFactory(mock);
-            transactions.reactive().setAttemptContextFactory(factory);
-
-            if (operation.equals("beforeAtrPending")) {
-                mock.beforeAtrPending = (ctx) -> {
-                    if (attempt.get() == 1) return Mono.error(new TemporaryFailureException());
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterAtrPending")) {
-                mock.afterAtrPending = (ctx) -> {
-                    if (attempt.get() == 1) return Mono.error(new TemporaryFailureException());
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeAtrComplete")) {
-                mock.beforeAtrComplete = (ctx) -> {
-                    if (attempt.get() == 1 && first.get()) {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());
-                    }
-                    else return Mono.just(1);
-                };
-
-            }
-
-            if (operation.equals("beforeAtrRolledBack")) {
-                mock.beforeAtrRolledBack = (ctx) -> {
-                    if (attempt.get() == 1&& first.get()) {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());
-                    }
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterAtrCommit")) {
-                mock.afterAtrCommit = (ctx) -> {
-                    if (attempt.get() == 1&& first.get()) {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());
-                    }
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterAtrComplete")) {
-                mock.afterAtrComplete = (ctx) -> {
-                    if (attempt.get() == 1&& first.get()) {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());
-                    }
-                    else return Mono.just(1);
-                };
-            }
-
-//		    if (operation.equals("afterAtrRolledBack")) {
-//			    mock.afterAtrRolledBack = (ctx) -> {
-//			       if (attempt.get() == 1&& first.get()) {
-//			    	   first.set(false);
-//			    	   return Mono.error(new TemporaryFailureException());
-//			       }
-//			       else return Mono.just(1);
-//			    };
-//		    }
-
-            TransactionResult result = transactions.run((ctx1) -> {
-                attempt.set(attempt.get() + 1);
-
-                for (Tuple2<String, JsonObject> document : Createkeys) {
-                    TransactionGetResult doc=ctx1.insert(collection, document.getT1(), document.getT2());
-                }
-
-                if (commit) ctx1.commit();
-                else ctx1.rollback();
-
-            });
-
-            result.log().logs().forEach(System.err::println);
-            return res;		}
-        catch (TransactionFailed err) {
-            // This per-txn log allows the app to only log failures
-            System.out.println("Transaction failed from runTransaction");
-            for (LogDefer e : ((TransactionFailed) err).result().log().logs()) {
-                System.out.println(e);
-                res.add(e);
-            }
-            return res ;
-        }
-
-
-    }
-
-    public List<LogDefer> MockRunTransaction(Cluster cluster, TransactionConfig config, Collection collection, List<Tuple2<String,
-            JsonObject>> Createkeys, List<String> Updatekeys, List<String> Deletekeys, Boolean commit, String operation, String docId)
-    {
-        List<LogDefer> res = new ArrayList<LogDefer>();
-        try (Transactions transactions = Transactions.create(cluster, config)) {
-
-            AtomicBoolean first = new AtomicBoolean(true);
-            TransactionMock mock = new TransactionMock();
-            TestAttemptContextFactory factory = new TestAttemptContextFactory(mock);
-            transactions.reactive().setAttemptContextFactory(factory);
-
-            if (operation.equals("afterStagedInsertComplete")) {
-                mock.afterStagedInsertComplete = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterStagedReplaceComplete")) {
-                mock.afterStagedReplaceComplete = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterStagedRemoveComplete")) {
-                mock.afterStagedRemoveComplete = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterDocCommitted")) {
-                System.out.println("afterDocCommitted from mocktxn");
-                mock.afterDocCommitted = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        System.out.println("afterDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
-                        throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
-                                "writes");}
-                        //return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("afterGetComplete")) {
-                mock.afterGetComplete = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeDocCommitted")) {
-                System.out.println("beforeDocCommitted from mocktxn");
-                mock.beforeDocCommitted = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        System.out.println("beforeDocCommitted from mocktxn returning TemporaryFailureException: "+ docId);
-                        throw new RuntimeException("Raising fake exception in tests to simulate repeated failed " +
-                                "writes");}
-                       // return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeStagedInsert")) {
-                mock.beforeStagedInsert = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeStagedReplace")) {
-                mock.beforeStagedReplace = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeStagedRemove")) {
-                mock.beforeStagedRemove = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeDocRemoved")) {
-                mock.beforeDocRemoved = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            if (operation.equals("beforeDocRolledBack")) {
-                mock.beforeDocRolledBack = (ctx, id) -> {
-                    if (first.get() && id.equals(docId))  {
-                        first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
-                    else return Mono.just(1);
-                };
-            }
-
-            TransactionResult result = transactions.run((ctx1) -> {
-
-                for (Tuple2<String, JsonObject> document : Createkeys) {
-                    TransactionGetResult doc=ctx1.insert(collection, document.getT1(), document.getT2());
-                }
-
-                for (String key: Updatekeys) {
-                    try {
-                        TransactionGetResult doc2=ctx1.getOptional(collection, key).get();
-                        JsonObject content = doc2.contentAs(JsonObject.class);
-                        content.put("mutated", 1 );
-                        ctx1.replace(doc2, content);
-                    }
-                    catch (TransactionFailed err) {
-                        System.out.println("Document not present");
-                    }
-                }
-
-                for (String key: Deletekeys) {
-                    try {
-                        TransactionGetResult doc1=ctx1.getOptional(collection, key).get();
-                        ctx1.remove(doc1);
-                    }
-                    catch (TransactionFailed err) {
-                        System.out.println("Document not present");
-                    }
-                }
-
-            });
-            result.log().logs().forEach(System.err::println);
-        }
-        catch (TransactionFailed err) {
-            // This per-txn log allows the app to only log failures
-            System.out.println("Transaction failed from runTransaction");
-            for (LogDefer e : ((TransactionFailed) err).result().log().logs()) {
-                System.out.println(e);
-                res.add(e);
-            }
-        }
-        return res;
-    }
 
 
 

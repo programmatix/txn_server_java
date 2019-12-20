@@ -23,7 +23,7 @@ public class txnService extends txnGrpc.txnImplBase{
 
         if (connection != null) {
             System.out.println("Connection already exists");
-            response.setAPISuccessStatus(false).setAPIStatusInfo("Connection already exists");
+            response.setAPISuccessStatus(true).setAPIStatusInfo("Connection already exists");
         }else{
             try{
                 connection = new Handle(request);
@@ -86,8 +86,8 @@ public class txnService extends txnGrpc.txnImplBase{
         try {
             if(txnFactory!=null){
                 txnUtils = new TransactionCommands(request,connection);
-                if(request.getCommand().equals("TXN_DATA_LOAD")){
-                    txn_resp= txnUtils.txnInsert(txnFactory);
+                if(request.getCommand().equals("TXN_DATA_INSERT")){
+                    txn_resp= txnUtils.txnInsert(txnFactory,true);
                 }else if(request.getCommand().equals("TXN_DATA_UPDATE")){
                     txn_resp= txnUtils.txnUpdate(txnFactory);
                 }else  if (request.getCommand().equals("TXN_DATA_DELETE")) {
@@ -96,6 +96,8 @@ public class txnService extends txnGrpc.txnImplBase{
                     txn_resp = txnUtils.txnCommit(txnFactory,true);
                 }else  if (request.getCommand().equals("TXN_ROLLBACK")) {
                     txn_resp = txnUtils.txnCommit(txnFactory,false);
+                }else if (request.getCommand().equals("TXN_CLOSE")) {
+                    txn_resp = txnUtils.txnClose(txnFactory);
                 }
                 else{
                         System.out.println("Invalid command");

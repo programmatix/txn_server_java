@@ -93,13 +93,10 @@ public class SdkdConfig {
      * @throws IOException
      */
     static public SharedHandle getClient(String seedNode, String bucketName, String passwd, boolean clientCert) throws IOException {
-        System.out.println("Inside handle");
         SharedHandle ret = null;
         Cluster cluster = Cluster.connect(seedNode, Strings.LOGIN_ADMIN, passwd);
         Bucket bucket = cluster.bucket(bucketName);
-        System.out.println("Client is created successfully");
         if (handleShareCount == 0) {
-            System.out.println("handleShareCount == 0");
             ret = new SharedHandle();
             ret.setHandle(bucket);
             ret.setCluster(cluster);
@@ -107,17 +104,12 @@ public class SdkdConfig {
             return ret;
         }
         sdkLock.lock();
-        System.out.println(" sdkLock.lock();");
 
         try {
-            System.out.println(" try");
-
             if (clientList.isEmpty()) {
                 ret = new SharedHandle();
                 clientList.add(ret);
             }
-            System.out.println(" SharedHandle");
-
             ret = clientList.get(0);
             /* smallest count is not small enough! */
             if (ret.getRefCount() >= handleShareCount) {

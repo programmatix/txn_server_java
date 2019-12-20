@@ -172,6 +172,10 @@ public class Strings {
     public final static String TXN_DURABILITY = "TXN_DURABILITY";
     public final static String TXN_TIMEOUT = "TXN_TIMEOUT";
     public final static String TXN = "TXN";
+    public final static String DEFAULT_KEY = "Test";
+    public final static String CONTENT_NAME= "content";
+    public final static String DEFAULT_CONTENT_VALUE= "default";
+    public final static String UPDATED_CONTENT_VALUE= "updated";
 
 
 }
