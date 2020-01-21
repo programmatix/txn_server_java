@@ -27,6 +27,102 @@ public final class txnGrpc {
   public static final String SERVICE_NAME = "txnService.txn";
 
   // Static method descriptors that strictly reflect the proto.
+  private static volatile io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> getTransactionCreateMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "transactionCreate",
+      requestType = com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest.class,
+      responseType = com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> getTransactionCreateMethod() {
+    io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest, com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> getTransactionCreateMethod;
+    if ((getTransactionCreateMethod = txnGrpc.getTransactionCreateMethod) == null) {
+      synchronized (txnGrpc.class) {
+        if ((getTransactionCreateMethod = txnGrpc.getTransactionCreateMethod) == null) {
+          txnGrpc.getTransactionCreateMethod = getTransactionCreateMethod = 
+              io.grpc.MethodDescriptor.<com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest, com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(
+                  "txnService.txn", "transactionCreate"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse.getDefaultInstance()))
+                  .setSchemaDescriptor(new txnMethodDescriptorSupplier("transactionCreate"))
+                  .build();
+          }
+        }
+     }
+     return getTransactionCreateMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionInsertMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "transactionInsert",
+      requestType = com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest.class,
+      responseType = com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionInsertMethod() {
+    io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest, com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionInsertMethod;
+    if ((getTransactionInsertMethod = txnGrpc.getTransactionInsertMethod) == null) {
+      synchronized (txnGrpc.class) {
+        if ((getTransactionInsertMethod = txnGrpc.getTransactionInsertMethod) == null) {
+          txnGrpc.getTransactionInsertMethod = getTransactionInsertMethod = 
+              io.grpc.MethodDescriptor.<com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest, com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(
+                  "txnService.txn", "transactionInsert"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse.getDefaultInstance()))
+                  .setSchemaDescriptor(new txnMethodDescriptorSupplier("transactionInsert"))
+                  .build();
+          }
+        }
+     }
+     return getTransactionInsertMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionCommitMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "transactionCommit",
+      requestType = com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest.class,
+      responseType = com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest,
+      com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionCommitMethod() {
+    io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest, com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> getTransactionCommitMethod;
+    if ((getTransactionCommitMethod = txnGrpc.getTransactionCommitMethod) == null) {
+      synchronized (txnGrpc.class) {
+        if ((getTransactionCommitMethod = txnGrpc.getTransactionCommitMethod) == null) {
+          txnGrpc.getTransactionCommitMethod = getTransactionCommitMethod = 
+              io.grpc.MethodDescriptor.<com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest, com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(
+                  "txnService.txn", "transactionCommit"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse.getDefaultInstance()))
+                  .setSchemaDescriptor(new txnMethodDescriptorSupplier("transactionCommit"))
+                  .build();
+          }
+        }
+     }
+     return getTransactionCommitMethod;
+  }
+
   private static volatile io.grpc.MethodDescriptor<com.couchbase.grpc.protocol.TxnServer.txn_req,
       com.couchbase.grpc.protocol.TxnServer.APIResponse> getCreateTxnFactoryMethod;
 
@@ -152,6 +248,27 @@ public final class txnGrpc {
 
     /**
      */
+    public void transactionCreate(com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> responseObserver) {
+      asyncUnimplementedUnaryCall(getTransactionCreateMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void transactionInsert(com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> responseObserver) {
+      asyncUnimplementedUnaryCall(getTransactionInsertMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void transactionCommit(com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> responseObserver) {
+      asyncUnimplementedUnaryCall(getTransactionCommitMethod(), responseObserver);
+    }
+
+    /**
+     */
     public void createTxnFactory(com.couchbase.grpc.protocol.TxnServer.txn_req request,
         io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.APIResponse> responseObserver) {
       asyncUnimplementedUnaryCall(getCreateTxnFactoryMethod(), responseObserver);
@@ -173,6 +290,27 @@ public final class txnGrpc {
 
     @java.lang.Override public final io.grpc.ServerServiceDefinition bindService() {
       return io.grpc.ServerServiceDefinition.builder(getServiceDescriptor())
+          .addMethod(
+            getTransactionCreateMethod(),
+            asyncUnaryCall(
+              new MethodHandlers<
+                com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest,
+                com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse>(
+                  this, METHODID_TRANSACTION_CREATE)))
+          .addMethod(
+            getTransactionInsertMethod(),
+            asyncUnaryCall(
+              new MethodHandlers<
+                com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest,
+                com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>(
+                  this, METHODID_TRANSACTION_INSERT)))
+          .addMethod(
+            getTransactionCommitMethod(),
+            asyncUnaryCall(
+              new MethodHandlers<
+                com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest,
+                com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>(
+                  this, METHODID_TRANSACTION_COMMIT)))
           .addMethod(
             getCreateTxnFactoryMethod(),
             asyncUnaryCall(
@@ -214,6 +352,30 @@ public final class txnGrpc {
     protected txnStub build(io.grpc.Channel channel,
         io.grpc.CallOptions callOptions) {
       return new txnStub(channel, callOptions);
+    }
+
+    /**
+     */
+    public void transactionCreate(com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> responseObserver) {
+      asyncUnaryCall(
+          getChannel().newCall(getTransactionCreateMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void transactionInsert(com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> responseObserver) {
+      asyncUnaryCall(
+          getChannel().newCall(getTransactionInsertMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void transactionCommit(com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest request,
+        io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> responseObserver) {
+      asyncUnaryCall(
+          getChannel().newCall(getTransactionCommitMethod(), getCallOptions()), request, responseObserver);
     }
 
     /**
@@ -261,6 +423,27 @@ public final class txnGrpc {
 
     /**
      */
+    public com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse transactionCreate(com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest request) {
+      return blockingUnaryCall(
+          getChannel(), getTransactionCreateMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse transactionInsert(com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest request) {
+      return blockingUnaryCall(
+          getChannel(), getTransactionInsertMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse transactionCommit(com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest request) {
+      return blockingUnaryCall(
+          getChannel(), getTransactionCommitMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
     public com.couchbase.grpc.protocol.TxnServer.APIResponse createTxnFactory(com.couchbase.grpc.protocol.TxnServer.txn_req request) {
       return blockingUnaryCall(
           getChannel(), getCreateTxnFactoryMethod(), getCallOptions(), request);
@@ -301,6 +484,30 @@ public final class txnGrpc {
 
     /**
      */
+    public com.google.common.util.concurrent.ListenableFuture<com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse> transactionCreate(
+        com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest request) {
+      return futureUnaryCall(
+          getChannel().newCall(getTransactionCreateMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> transactionInsert(
+        com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest request) {
+      return futureUnaryCall(
+          getChannel().newCall(getTransactionInsertMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse> transactionCommit(
+        com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest request) {
+      return futureUnaryCall(
+          getChannel().newCall(getTransactionCommitMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
     public com.google.common.util.concurrent.ListenableFuture<com.couchbase.grpc.protocol.TxnServer.APIResponse> createTxnFactory(
         com.couchbase.grpc.protocol.TxnServer.txn_req request) {
       return futureUnaryCall(
@@ -324,9 +531,12 @@ public final class txnGrpc {
     }
   }
 
-  private static final int METHODID_CREATE_TXN_FACTORY = 0;
-  private static final int METHODID_CREATE_CONN = 1;
-  private static final int METHODID_EXECUTE_TXN = 2;
+  private static final int METHODID_TRANSACTION_CREATE = 0;
+  private static final int METHODID_TRANSACTION_INSERT = 1;
+  private static final int METHODID_TRANSACTION_COMMIT = 2;
+  private static final int METHODID_CREATE_TXN_FACTORY = 3;
+  private static final int METHODID_CREATE_CONN = 4;
+  private static final int METHODID_EXECUTE_TXN = 5;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -345,6 +555,18 @@ public final class txnGrpc {
     @java.lang.SuppressWarnings("unchecked")
     public void invoke(Req request, io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
+        case METHODID_TRANSACTION_CREATE:
+          serviceImpl.transactionCreate((com.couchbase.grpc.protocol.TxnServer.TransactionCreateRequest) request,
+              (io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionCreateResponse>) responseObserver);
+          break;
+        case METHODID_TRANSACTION_INSERT:
+          serviceImpl.transactionInsert((com.couchbase.grpc.protocol.TxnServer.TransactionInsertRequest) request,
+              (io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>) responseObserver);
+          break;
+        case METHODID_TRANSACTION_COMMIT:
+          serviceImpl.transactionCommit((com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest) request,
+              (io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionGenericResponse>) responseObserver);
+          break;
         case METHODID_CREATE_TXN_FACTORY:
           serviceImpl.createTxnFactory((com.couchbase.grpc.protocol.TxnServer.txn_req) request,
               (io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.APIResponse>) responseObserver);
@@ -418,6 +640,9 @@ public final class txnGrpc {
         if (result == null) {
           serviceDescriptor = result = io.grpc.ServiceDescriptor.newBuilder(SERVICE_NAME)
               .setSchemaDescriptor(new txnFileDescriptorSupplier())
+              .addMethod(getTransactionCreateMethod())
+              .addMethod(getTransactionInsertMethod())
+              .addMethod(getTransactionCommitMethod())
               .addMethod(getCreateTxnFactoryMethod())
               .addMethod(getCreateConnMethod())
               .addMethod(getExecuteTxnMethod())

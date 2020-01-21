@@ -5,26 +5,15 @@ import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.grpc.protocol.TxnServer;
-import com.couchbase.sdkd.util.ProtocolException;
 import com.couchbase.sdkd.util.SimpleTransaction;
 import com.couchbase.sdkd.util.Strings;
 import com.couchbase.transactions.TransactionGetResult;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfig;
-import com.couchbase.transactions.log.LogDefer;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import static org.junit.Assert.assertEquals;
-
-
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 
 public class TransactionCommands {
@@ -182,8 +171,6 @@ public class TransactionCommands {
         }
 
     }
-
-
 
 
 
