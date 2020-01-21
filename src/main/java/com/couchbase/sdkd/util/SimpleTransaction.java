@@ -44,14 +44,14 @@ public class SimpleTransaction {
     Queue<String> queue=new LinkedList<>();
 
     public TransactionConfig createTransactionConfig(int expiryTimeout, int changedurability) {
-        TransactionConfigBuilder config = TransactionConfigBuilder.create().logDirectlyCleanup(Event.Severity.VERBOSE);
+        TransactionConfigBuilder config = TransactionConfigBuilder.create();
         if (changedurability > 0) {
             switch (changedurability) {
                 case 1:
                     config.durabilityLevel(TransactionDurabilityLevel.MAJORITY);
                     break;
                 case 2:
-                    config.durabilityLevel(TransactionDurabilityLevel.MAJORITY_AND_PERSIST_ON_MASTER);
+                    config.durabilityLevel(TransactionDurabilityLevel.MAJORITY_AND_PERSIST_TO_ACTIVE);
                     break;
                 case 3:
                     config.durabilityLevel(TransactionDurabilityLevel.PERSIST_TO_MAJORITY);
@@ -75,11 +75,9 @@ public class SimpleTransaction {
                 if (te.severity().ordinal() >= logLevel.ordinal()) {
                     System.out.println(te.getClass().getSimpleName() + ": " + event.description());
 
-                    if (te.hasLogs()) {
-                        te.logs().forEach(log -> {
-                            System.out.println(te.getClass().getSimpleName() + " log: " + log.toString());
-                        });
-                    }
+                    te.logs().forEach(log -> {
+                        System.out.println(te.getClass().getSimpleName() + " log: " + log.toString());
+                    });
                 }
             }
         });
@@ -101,7 +99,7 @@ public class SimpleTransaction {
                 mock.afterStagedInsertComplete = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -110,7 +108,7 @@ public class SimpleTransaction {
                 mock.afterStagedReplaceComplete = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -119,7 +117,7 @@ public class SimpleTransaction {
                 mock.afterStagedRemoveComplete = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -137,7 +135,7 @@ public class SimpleTransaction {
                 mock.afterGetComplete = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -147,7 +145,7 @@ public class SimpleTransaction {
                 mock.beforeDocCommitted = (ctx, id) -> {
                     if (id.equals(docId)) {
                         System.out.println("beforeDocCommitted from mocktxn returning TemporaryFailureException: " + docId);
-                        return Mono.error(new TemporaryFailureException());
+                        return Mono.error(new TemporaryFailureException(null));
                     } else return Mono.just(1);
                 };
             }
@@ -156,7 +154,7 @@ public class SimpleTransaction {
                 mock.beforeStagedInsert = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -165,7 +163,7 @@ public class SimpleTransaction {
                 mock.beforeStagedReplace = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -174,7 +172,7 @@ public class SimpleTransaction {
                 mock.beforeStagedRemove = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -183,7 +181,7 @@ public class SimpleTransaction {
                 mock.beforeDocRemoved = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
@@ -192,7 +190,7 @@ public class SimpleTransaction {
                 mock.beforeDocRolledBack = (ctx, id) -> {
                     if (first.get() && id.equals(docId))  {
                         first.set(false);
-                        return Mono.error(new TemporaryFailureException());}
+                        return Mono.error(new TemporaryFailureException(null));}
                     else return Mono.just(1);
                 };
             }
