@@ -12,8 +12,7 @@ public class ResumableTransactionUtil {
 
     public static ResumableTransaction create(Transactions transactionsFactory) {
         String uuid = UUID.randomUUID().toString();
-        ResumableTransaction out = new ResumableTransaction(transactionsFactory, uuid);
-        return out;
+        return new ResumableTransaction(transactionsFactory, uuid);
     }
 }
 

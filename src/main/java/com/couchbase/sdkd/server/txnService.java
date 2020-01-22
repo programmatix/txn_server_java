@@ -1,6 +1,7 @@
 package com.couchbase.sdkd.server;
 
 
+import com.couchbase.client.core.error.TemporaryFailureException;
 import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.grpc.protocol.TxnServer.APIResponse;
 import com.couchbase.grpc.protocol.txnGrpc;
@@ -11,13 +12,19 @@ import com.couchbase.sdkd.transactions.ResumableTransactionInsert;
 import com.couchbase.sdkd.transactions.ResumableTransactionUtil;
 import com.couchbase.sdkd.util.SdkdConfig;
 import com.couchbase.sdkd.util.SharedHandle;
+import com.couchbase.transactions.TransactionDurabilityLevel;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfigBuilder;
+import com.couchbase.transactions.error.internal.AbortedAsRequested;
+import com.couchbase.transactions.error.internal.AbortedAsRequestedNoRollbackNoCleanup;
+import com.couchbase.transactions.util.TestAttemptContextFactory;
+import com.couchbase.transactions.util.TransactionMock;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -27,11 +34,6 @@ public class txnService extends txnGrpc.txnImplBase {
     Handle connection;
     private Transactions txnFactory = null;
     TransactionCommands txnUtils;
-
-    private ConcurrentHashMap<String, ResumableTransaction> resumableTransactions = new ConcurrentHashMap<>();
-    private final Logger logger = LogManager.getLogger(txnService.class);
-    private Transactions transactions = null;
-    private SharedHandle sh = null;
 
     @Override
     public void createConn(TxnServer.conn_info request, StreamObserver<APIResponse> responseObserver) {
@@ -138,97 +140,7 @@ public class txnService extends txnGrpc.txnImplBase {
         responseObserver.onCompleted();
     }
 
-    public void transactionCreate(TxnServer.TransactionCreateRequest request,
-                                  StreamObserver<TxnServer.TransactionCreateResponse> responseObserver) {
-        TxnServer.TransactionCreateResponse.Builder response =
-            TxnServer.TransactionCreateResponse.getDefaultInstance().newBuilderForType();
-
-        try {
-            logger.info("Creating new ResumableTransaction");
-
-            // TODO this isn't thread-safe
-            if (sh == null) {
-                // TODO don't hardcode these
-                sh = SdkdConfig.getClient("localhost", "default", "password", false);
-            }
-
-            // TODO this isn't thread-safe
-            if (transactions == null) {
-                transactions = Transactions.create(sh.getCluster(),
-                    TransactionConfigBuilder.create()
-                        // TODO support hooks
-                        // Give time for debugging
-                        .expirationTime(Duration.ofSeconds(120)));
-            }
-
-            ResumableTransaction txn = ResumableTransactionUtil.create(transactions);
-            resumableTransactions.put(txn.transactionRef(), txn);
-
-            logger.info("Created new ResumableTransaction with ref " + txn.transactionRef());
-
-            response
-                .setSuccess(true)
-                .setTransactionRef(txn.transactionRef());
-        } catch (RuntimeException err) {
-            logger.info("Operation failed with error " + err.getMessage());
-            response.setSuccess(false);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        responseObserver.onNext(response.build());
-        responseObserver.onCompleted();
-    }
-
-    public void transactionInsert(TxnServer.TransactionInsertRequest request,
-                                  StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
-        TxnServer.TransactionGenericResponse.Builder response =
-            TxnServer.TransactionGenericResponse.getDefaultInstance().newBuilderForType();
-
-        try {
-            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-
-            ResumableTransactionInsert cmd = new ResumableTransactionInsert(sh.getDefaultHandleCollection(),
-                request.getDocId(),
-                request.getContentJson());
-
-            boolean result = txn.executeCommandBlocking(cmd);
-
-            response.setSuccess(result);
-        } catch (RuntimeException err) {
-            logger.info("Operation failed with error " + err.getMessage());
-            response.setSuccess(false);
-        }
-        responseObserver.onNext(response.build());
-        responseObserver.onCompleted();
-    }
-
-    public void transactionCommit(TxnServer.TransactionGenericRequest request,
-                                  StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
-        TxnServer.TransactionGenericResponse.Builder response =
-            TxnServer.TransactionGenericResponse.getDefaultInstance().newBuilderForType();
-
-        try {
-            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-
-            ResumableTransactionCommit cmd = new ResumableTransactionCommit();
-
-            boolean result = txn.executeCommandBlocking(cmd);
-
-            response.setSuccess(result);
-        } catch (RuntimeException err) {
-            logger.info("Operation failed with error " + err.getMessage());
-            response.setSuccess(false);
-        }
-        responseObserver.onNext(response.build());
-        responseObserver.onCompleted();
-    }
-
     public static void main(String[] args) throws IOException, InterruptedException {
-        Server server = ServerBuilder.forPort(8050).addService(new txnService()).build();
-        server.start();
-        System.out.println("Server Started at 8050.");
-        server.awaitTermination();
+        ResumableTransactionService.main(args);
     }
-
-
 }
