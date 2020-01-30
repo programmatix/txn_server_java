@@ -1,27 +1,17 @@
-package com.couchbase.sdkd.cbclient;
+package com.couchbase.Tests.Transactions.Utils;
 
+import com.couchbase.Utils.ClusterConnection;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.grpc.protocol.TxnServer;
-import com.couchbase.sdkd.util.ProtocolException;
-import com.couchbase.sdkd.util.SimpleTransaction;
-import com.couchbase.sdkd.util.Strings;
+import com.couchbase.Constants.Strings;
 import com.couchbase.transactions.TransactionGetResult;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfig;
-import com.couchbase.transactions.log.LogDefer;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
-
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-import static org.junit.Assert.assertEquals;
 
 
 
@@ -29,28 +19,17 @@ import static org.junit.Assert.assertEquals;
 
 public class TransactionCommands {
     private static List<String> txnKeys = new LinkedList<>();
-    private List<String> UpdateKeys = new ArrayList<>();
-    private List<String> DeleteKeys = new ArrayList<>();
-    private List<Collection> ll = new LinkedList<>();
     private static JsonObject docContent = null;
     protected TxnServer.txn_req req;
-    protected Bucket sdkHandle;
     protected Collection defaultCollection;
     protected Cluster cluster;
-    protected int handleId;
-    protected String bucketName;
-    protected String passwd;
-    protected List<String> hostlist;
+    protected Bucket bucket;
 
-    public TransactionCommands(TxnServer.txn_req req, Handle h) {
+    public TransactionCommands(TxnServer.txn_req req, ClusterConnection clusterconnection) {
         this.req = req;
-        sdkHandle = h.getSdk();
-        bucketName = h.getBucketName();
-        passwd = h.getBucketPassword();
-        hostlist = h.getHosts();
-        cluster = h.getCluster();
-        defaultCollection = h.getDefaultBucketCollection();
-        ll.add(defaultCollection);
+        cluster = clusterconnection.getCluster();
+        bucket = clusterconnection.getBucket();
+        defaultCollection = bucket.defaultCollection();
     }
 
 

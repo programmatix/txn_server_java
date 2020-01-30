@@ -1,6 +1,6 @@
 
 
-package com.couchbase.sdkd.util;
+package com.couchbase.Tests.Transactions.Utils;
 
 import com.couchbase.transactions.config.TransactionConfig;
 import com.couchbase.transactions.config.TransactionConfigBuilder;

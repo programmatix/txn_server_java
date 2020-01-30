@@ -1,18 +1,19 @@
-package com.couchbase.sdkd.server;
+package com.couchbase;
 
 
+import com.couchbase.Utils.ClusterConnection;
+import com.couchbase.Tests.Transactions.Utils.TransactionCommands;
 import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.grpc.protocol.TxnServer.APIResponse;
 import com.couchbase.grpc.protocol.txnGrpc;
-import com.couchbase.sdkd.cbclient.*;
 import com.couchbase.transactions.Transactions;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 
-public class txnService extends txnGrpc.txnImplBase{
-    Handle connection;
+public class txnServerService extends txnGrpc.txnImplBase{
+    ClusterConnection connection;
     private  Transactions txnFactory=null;
     TransactionCommands txnUtils;
 
@@ -26,7 +27,7 @@ public class txnService extends txnGrpc.txnImplBase{
             response.setAPISuccessStatus(true).setAPIStatusInfo("Connection already exists");
         }else{
             try{
-                connection = new Handle(request);
+                connection = new ClusterConnection(request);
             } catch (Exception e){
                 System.out.println(e);
             }
@@ -123,7 +124,7 @@ public class txnService extends txnGrpc.txnImplBase{
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        Server server = ServerBuilder.forPort(8050).addService(new txnService()).build();
+        Server server = ServerBuilder.forPort(8050).addService(new txnServerService()).build();
         server.start();
         System.out.println("Server Started at 8050.");
         server.awaitTermination();
