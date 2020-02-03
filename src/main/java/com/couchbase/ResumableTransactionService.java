@@ -32,6 +32,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
     private ConcurrentHashMap<String, ResumableTransaction> resumableTransactions = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Transactions> transactionsFactories = new ConcurrentHashMap<>();
     private final Logger logger = LogManager.getLogger(ResumableTransactionService.class);
+
     ClusterConnection connection;
 
 
