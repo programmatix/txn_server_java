@@ -10,11 +10,7 @@ import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.grpc.protocol.TxnServer;
 
-/**
- * This class converts
- * @todo integrate this with SharedHandle
- * @author mnunberg
- */
+
 public class ClusterConnection {
     private Cluster cluster;
     private Bucket bucket;
