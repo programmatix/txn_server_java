@@ -1,10 +1,10 @@
 package com.couchbase.Tests.Transactions.Utils;
 
+import com.couchbase.Logging.LogUtil;
 import com.couchbase.transactions.AttemptContext;
 import com.couchbase.transactions.TransactionResult;
 import com.couchbase.transactions.Transactions;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  * Allows interacting with a transaction - mutation and reading documents, committing, etc. - during a test.
  */
 public class ResumableTransaction {
-    private final Logger logger = LogManager.getLogger(ResumableTransaction.class);
+    private final Logger logger = LogUtil.getLogger(ResumableTransaction.class);
     private final Thread handle;
     private final ConcurrentLinkedQueue<ResumableTransactionCommand> queue = new ConcurrentLinkedQueue<>();
     private final String transactionRef;
