@@ -3,6 +3,7 @@ package com.couchbase.Tests.Transactions.Utils;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.transactions.AttemptContext;
+import com.couchbase.transactions.TransactionResult;
 
 /**
  * Inserts a doc, in a running {@link ResumableTransaction}
@@ -11,6 +12,7 @@ public class ResumableTransactionUpdate implements ResumableTransactionCommand {
     private final Collection collection;
     private final String id;
     private final String contentJson;
+    private String name="update";
 
     public ResumableTransactionUpdate(Collection collection,
                                       String id,
@@ -19,6 +21,7 @@ public class ResumableTransactionUpdate implements ResumableTransactionCommand {
         this.id = id;
         this.contentJson = contentJson;
     }
+
 
     @Override
     public void execute(AttemptContext ctx) {
@@ -36,5 +39,18 @@ public class ResumableTransactionUpdate implements ResumableTransactionCommand {
         sb.append(contentJson);
         sb.append("}");
         return sb.toString();
+    }
+
+    @Override
+    public boolean assertions(TransactionResult transactionResult,Exception e){ return true;}
+
+    @Override
+    public  String getname(){
+        return name;
+    }
+
+    @Override
+    public boolean assertions(){
+        return true;
     }
 }

@@ -21,7 +21,9 @@ public class ResumableTransaction {
     private final ConcurrentLinkedQueue<ResumableTransactionCommand> queue = new ConcurrentLinkedQueue<>();
     private final String transactionRef;
     private CountDownLatch waitForResult;
+    private  TransactionResult transactionResult;
     private volatile boolean result = false;
+    ResumableTransactionCommand lastCommand;
 
     public ResumableTransaction(Transactions transactionsFactory,
                                 String transactionRef) {
@@ -32,27 +34,24 @@ public class ResumableTransaction {
 
             while (!done) {
                 logger.trace("Waiting for next command");
-
                 ResumableTransactionCommand next = queue.poll();
 
-                if (next != null) {
-
-                    logger.info("Received command " + next);
+                if (next != null ) {
+                    lastCommand=next;
+                    logger.info("Received command: " + next);
 
                     try {
                         next.execute(ctx);
-
+                        result = lastCommand.assertions();
                         logger.info("Command was successful");
-                        result = true;
                         waitForResult.countDown();
-
                         done = next.isTransactionFinished();
-
-                    } catch (RuntimeException err) {
-                        logger.info("Command threw: ", err);
-                        result = false;
+                    }catch (Exception e) {
+                        logger.info("Command threw Exception: "+ e.getMessage());
+                        result = lastCommand.assertions(null,e);
                         waitForResult.countDown();
-                        throw err;
+                        done=true;
+                        // throw err;
                     }
                 }
                 else {
@@ -68,10 +67,8 @@ public class ResumableTransaction {
         handle = new Thread(() -> {
             try {
                 logger.info("Starting txn in separate thread");
-
-                TransactionResult result = transactionsFactory.run(lambda);
-
-                logger.info("Txn has finished");
+                transactionResult = transactionsFactory.run(lambda);
+                lastCommand.assertions();
             } catch (RuntimeException err) {
                 logger.info("Txn has failed with error " + err.getMessage());
             }
@@ -86,12 +83,9 @@ public class ResumableTransaction {
         // TODO probably a neater way of waiting for results
         waitForResult = new CountDownLatch(1);
         queue.add(cmd);
-
         try {
             waitForResult.await();
-
-            logger.info("Finished command " + cmd + " result=", result);
-
+            logger.info("Finished command " + cmd + " result= "+ result);
             return result;
         } catch (InterruptedException e) {
             logger.warn("Interrupted");
@@ -108,4 +102,8 @@ public class ResumableTransaction {
     public String transactionRef() {
         return transactionRef;
     }
+
+    public TransactionResult gettransactionResult(){return transactionResult;}
+
+
 }

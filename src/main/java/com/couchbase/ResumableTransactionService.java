@@ -9,6 +9,8 @@ import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.transactions.TransactionDurabilityLevel;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfigBuilder;
+import com.couchbase.transactions.error.TransactionFailed;
+import com.couchbase.transactions.error.attempts.AttemptException;
 import com.couchbase.transactions.error.internal.AbortedAsRequested;
 import com.couchbase.transactions.error.internal.AbortedAsRequestedNoRollbackNoCleanup;
 import com.couchbase.transactions.support.AttemptContextFactory;
@@ -18,13 +20,14 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
-
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.Assert.assertTrue;
 
 public class ResumableTransactionService extends ResumableTransactionServiceGrpc.ResumableTransactionServiceImplBase {
 
@@ -198,7 +201,6 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
     }
 
 
-
     @Override
     public void transactionInsert(TxnServer.TransactionInsertRequest request,
                                   StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
@@ -221,6 +223,55 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void transactionEmpty(TxnServer.TransactionGenericRequest request,
+                                  StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
+        TxnServer.TransactionGenericResponse.Builder response =
+                TxnServer.TransactionGenericResponse.getDefaultInstance().newBuilderForType();
+
+        try {
+            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
+
+            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty();
+            boolean result = txn.executeCommandBlocking(cmd);
+            response.setSuccess(result);
+
+        } catch (RuntimeException err) {
+            logger.error("Operation failed with error " + err.getMessage());
+            response.setSuccess(false);
+        }
+        responseObserver.onNext(response.build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void transactionRollback(TxnServer.TransactionGenericRequest request,
+                                 StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
+        TxnServer.TransactionGenericResponse.Builder response =
+                TxnServer.TransactionGenericResponse.getDefaultInstance().newBuilderForType();
+
+        try {
+            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
+
+            ResumableTransactionRollback cmd = new ResumableTransactionRollback();
+            boolean result = txn.executeCommandBlocking(cmd);
+            response.setSuccess(result);
+
+        }catch (TransactionFailed e) {
+            Throwable wrapped = TestUtils.assertTransactionFailed(e);
+            assertTrue(wrapped instanceof AttemptException);
+          //IMPLEMENT BELOW checkLogRedactionIfEnabled LATER
+           // TestUtils.checkLogRedactionIfEnabled(e.result(), docId);
+        } catch (RuntimeException err) {
+            logger.error("Operation failed with error " + err.getMessage());
+            response.setSuccess(false);
+        }
+
+        responseObserver.onNext(response.build());
+        responseObserver.onCompleted();
+    }
+
 
     @Override
     public void transactionUpdate(TxnServer.TransactionUpdateRequest request,
@@ -275,12 +326,9 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-
-
-            ResumableTransactionCommit cmd = new ResumableTransactionCommit();
+            ResumableTransactionCommit cmd = new ResumableTransactionCommit(request.getIsEmpty(), request.getIsFinished());
 
             boolean result = txn.executeCommandBlocking(cmd);
-
             response.setSuccess(result);
         } catch (RuntimeException err) {
             logger.error("Operation failed with error " + err.getMessage());
