@@ -1,5 +1,4 @@
-package com.couchbase.Tests.Transactions.Utils;
-
+package com.couchbase.Transactions;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.transactions.AttemptContext;
@@ -8,13 +7,13 @@ import com.couchbase.transactions.TransactionResult;
 /**
  * Inserts a doc, in a running {@link ResumableTransaction}
  */
-public class ResumableTransactionUpdate implements ResumableTransactionCommand {
+public class ResumableTransactionInsert implements ResumableTransactionCommand {
     private final Collection collection;
     private final String id;
     private final String contentJson;
-    private String name="update";
+    private String name="insert";
 
-    public ResumableTransactionUpdate(Collection collection,
+    public ResumableTransactionInsert(Collection collection,
                                       String id,
                                       String contentJson) {
         this.collection = collection;
@@ -22,27 +21,24 @@ public class ResumableTransactionUpdate implements ResumableTransactionCommand {
         this.contentJson = contentJson;
     }
 
-
     @Override
     public void execute(AttemptContext ctx) {
         JsonObject content = JsonObject.fromJson(contentJson);
-        ctx.replace(ctx.get(collection,id),content);
+        ctx.insert(collection, id, content);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Update{");
+        sb.append("Insert{");
         sb.append("id=");
         sb.append(id);
-        sb.append("with new content = ");
-        sb.append(contentJson);
         sb.append("}");
         return sb.toString();
     }
 
     @Override
-    public boolean assertions(TransactionResult transactionResult,Exception e){ return true;}
+    public boolean assertions(TransactionResult transactionResult, Exception e){ return true;}
 
     @Override
     public  String getname(){
@@ -53,4 +49,6 @@ public class ResumableTransactionUpdate implements ResumableTransactionCommand {
     public boolean assertions(){
         return true;
     }
+
+
 }

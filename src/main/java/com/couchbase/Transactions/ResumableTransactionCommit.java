@@ -1,29 +1,12 @@
-package com.couchbase.Tests.Transactions.Utils;
-
+package com.couchbase.Transactions;
 import com.couchbase.transactions.AttemptContext;
 import com.couchbase.transactions.TransactionResult;
-import com.couchbase.transactions.support.AttemptStates;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 /**
  * Commits a running {@link ResumableTransaction}
  */
 public class ResumableTransactionCommit implements ResumableTransactionCommand {
-    boolean isEmpty;
-    boolean isTransactionFinished=true;
     private String name="commit";
-
-    public ResumableTransactionCommit(boolean isEmpty, boolean isTransactionFinished ) {
-        this.isEmpty=isEmpty;
-        this.isTransactionFinished =isTransactionFinished;
-    }
-
-    @Override
-    public boolean isTransactionFinished() {
-        return isTransactionFinished;
-    }
 
     @Override
     public void execute(AttemptContext ctx) {
@@ -39,13 +22,13 @@ public class ResumableTransactionCommit implements ResumableTransactionCommand {
 
     @Override
     public boolean assertions(TransactionResult transactionResult, Exception e){
-        if(isEmpty)
+       /* if(isEmptyTxn)
         {
             assertEquals(AttemptStates.COMPLETED ,transactionResult.attempts().stream().findFirst().get().finalState());
             assertFalse(transactionResult.attempts().stream().findFirst().get().atrCollection().isPresent());
             assertFalse(transactionResult.attempts().stream().findFirst().get().atrId().isPresent());
             assertEquals(0, transactionResult.mutationTokens().size());
-        }
+        }*/
         return true;
     }
 

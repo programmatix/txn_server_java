@@ -1,16 +1,15 @@
 package com.couchbase;
 
 import com.couchbase.Logging.LogUtil;
-import com.couchbase.Tests.Transactions.Utils.*;
+import com.couchbase.Transactions.*;
 import com.couchbase.Utils.ClusterConnection;
+import com.couchbase.Utils.ResultObject;
 import com.couchbase.client.core.error.TemporaryFailureException;
 import com.couchbase.grpc.protocol.ResumableTransactionServiceGrpc;
 import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.transactions.TransactionDurabilityLevel;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfigBuilder;
-import com.couchbase.transactions.error.TransactionFailed;
-import com.couchbase.transactions.error.attempts.AttemptException;
 import com.couchbase.transactions.error.internal.AbortedAsRequested;
 import com.couchbase.transactions.error.internal.AbortedAsRequestedNoRollbackNoCleanup;
 import com.couchbase.transactions.support.AttemptContextFactory;
@@ -26,8 +25,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.junit.Assert.assertTrue;
 
 public class ResumableTransactionService extends ResumableTransactionServiceGrpc.ResumableTransactionServiceImplBase {
 
@@ -142,7 +139,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
                 .setSuccess(true)
                 .setTransactionsFactoryRef(transactionsFactoryRef);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionsFactoryCreate due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());
@@ -163,7 +160,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
             response.setSuccess(true);
 
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionsFactoryClose due to : " + err.getMessage());
             response.setSuccess(false);
         }
 
@@ -179,12 +176,11 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
         try {
             logger.info("Creating new ResumableTransaction");
-
             Transactions transactions = transactionsFactories.get(request.getTransactionsFactoryRef());
 
             ResumableTransaction txn = ResumableTransactionUtil.create(transactions);
-            resumableTransactions.put(txn.transactionRef(), txn);
 
+            resumableTransactions.put(txn.transactionRef(), txn);
             logger.info("Created new ResumableTransaction with ref " + txn.transactionRef());
 
             response
@@ -192,13 +188,45 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
                 .setTransactionRef(txn.transactionRef());
 
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionCreate due to :  " + err.getMessage());
             response.setSuccess(false);
         }
 
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void transactionClose(TxnServer.TransactionGenericRequest request,
+                                  StreamObserver<TxnServer.TransactionResultObject> responseObserver) {
+        TxnServer.TransactionResultObject.Builder response =
+                TxnServer.TransactionResultObject.getDefaultInstance().newBuilderForType();
+
+        try {
+            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
+            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty(true);
+            ResultObject result = txn.shutdownandverify(cmd);
+
+            response.setAtrCollectionPresent(result.atrCollectionPresent);
+            response.setAtrIdPresent(result.atrIdPresent);
+            response.setMutationTokensSize(result.mutationTokensSize);
+            response.setTxnAttemptsSize(result.txnAttemptsSize);
+            response.setAttemptFinalState(result.attemptFinalState);
+            response.setExceptionName(result.exceptionName);
+            response.setAtrCollectionPresent(result.atrCollectionPresent);
+            for(int i =0;i<result.logs.size();i++){
+                response.addLog(result.logs.get(i));
+            }
+
+
+        } catch (RuntimeException | InterruptedException err) {
+            logger.error("Operation failed during transactionClose due to :  " + err);
+           // response.setSuccess(false);
+        }
+        responseObserver.onNext(response.build());
+        responseObserver.onCompleted();
+    }
+
 
 
     @Override
@@ -214,10 +242,9 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
                     request.getDocId(),
                     request.getContentJson());
             boolean result = txn.executeCommandBlocking(cmd);
-
             response.setSuccess(result);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionInsert due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());
@@ -233,12 +260,11 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
 
-            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty();
+            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty(false);
             boolean result = txn.executeCommandBlocking(cmd);
             response.setSuccess(result);
-
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionEmpty due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());
@@ -257,14 +283,8 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
             ResumableTransactionRollback cmd = new ResumableTransactionRollback();
             boolean result = txn.executeCommandBlocking(cmd);
             response.setSuccess(result);
-
-        }catch (TransactionFailed e) {
-            Throwable wrapped = TestUtils.assertTransactionFailed(e);
-            assertTrue(wrapped instanceof AttemptException);
-          //IMPLEMENT BELOW checkLogRedactionIfEnabled LATER
-           // TestUtils.checkLogRedactionIfEnabled(e.result(), docId);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionRollback due to : " + err.getMessage());
             response.setSuccess(false);
         }
 
@@ -288,7 +308,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
             response.setSuccess(result);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionUpdate due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());
@@ -309,7 +329,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
             response.setSuccess(result);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionDelete due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());
@@ -326,12 +346,12 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-            ResumableTransactionCommit cmd = new ResumableTransactionCommit(request.getIsEmpty(), request.getIsFinished());
+            ResumableTransactionCommit cmd = new ResumableTransactionCommit();
 
             boolean result = txn.executeCommandBlocking(cmd);
             response.setSuccess(result);
         } catch (RuntimeException err) {
-            logger.error("Operation failed with error " + err.getMessage());
+            logger.error("Operation failed during transactionCommit due to : " + err.getMessage());
             response.setSuccess(false);
         }
         responseObserver.onNext(response.build());

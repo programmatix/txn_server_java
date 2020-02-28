@@ -1,5 +1,4 @@
-package com.couchbase.Tests.Transactions.Utils;
-
+package com.couchbase.Transactions;
 import com.couchbase.transactions.Transactions;
 
 import java.util.UUID;

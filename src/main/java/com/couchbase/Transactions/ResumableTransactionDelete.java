@@ -1,37 +1,31 @@
-package com.couchbase.Tests.Transactions.Utils;
-
+package com.couchbase.Transactions;
 import com.couchbase.client.java.Collection;
-import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.transactions.AttemptContext;
 import com.couchbase.transactions.TransactionResult;
 
 /**
  * Inserts a doc, in a running {@link ResumableTransaction}
  */
-public class ResumableTransactionInsert implements ResumableTransactionCommand {
+public class ResumableTransactionDelete implements ResumableTransactionCommand {
     private final Collection collection;
     private final String id;
-    private final String contentJson;
-    private String name="insert";
+    private String name="delete";
 
-    public ResumableTransactionInsert(Collection collection,
-                                      String id,
-                                      String contentJson) {
+    public ResumableTransactionDelete(Collection collection,
+                                      String id) {
         this.collection = collection;
         this.id = id;
-        this.contentJson = contentJson;
     }
 
     @Override
     public void execute(AttemptContext ctx) {
-        JsonObject content = JsonObject.fromJson(contentJson);
-        ctx.insert(collection, id, content);
+        ctx.remove(ctx.get(collection,id));
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Insert{");
+        sb.append("Delete{");
         sb.append("id=");
         sb.append(id);
         sb.append("}");
@@ -39,7 +33,7 @@ public class ResumableTransactionInsert implements ResumableTransactionCommand {
     }
 
     @Override
-    public boolean assertions(TransactionResult transactionResult, Exception e){ return true;}
+    public boolean assertions(TransactionResult transactionResult, Exception e){ return true; }
 
     @Override
     public  String getname(){
@@ -50,6 +44,4 @@ public class ResumableTransactionInsert implements ResumableTransactionCommand {
     public boolean assertions(){
         return true;
     }
-
-
 }
