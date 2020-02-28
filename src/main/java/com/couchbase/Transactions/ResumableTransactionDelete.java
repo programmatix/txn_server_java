@@ -1,7 +1,6 @@
 package com.couchbase.Transactions;
 import com.couchbase.client.java.Collection;
 import com.couchbase.transactions.AttemptContext;
-import com.couchbase.transactions.TransactionResult;
 
 /**
  * Inserts a doc, in a running {@link ResumableTransaction}
@@ -30,18 +29,5 @@ public class ResumableTransactionDelete implements ResumableTransactionCommand {
         sb.append(id);
         sb.append("}");
         return sb.toString();
-    }
-
-    @Override
-    public boolean assertions(TransactionResult transactionResult, Exception e){ return true; }
-
-    @Override
-    public  String getname(){
-        return name;
-    }
-
-    @Override
-    public boolean assertions(){
-        return true;
     }
 }

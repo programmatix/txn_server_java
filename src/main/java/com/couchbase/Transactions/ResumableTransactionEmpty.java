@@ -1,7 +1,6 @@
 package com.couchbase.Transactions;
 import com.couchbase.Logging.LogUtil;
 import com.couchbase.transactions.AttemptContext;
-import com.couchbase.transactions.TransactionResult;
 import org.slf4j.Logger;
 
 /**
@@ -32,18 +31,5 @@ public class ResumableTransactionEmpty implements ResumableTransactionCommand {
         StringBuilder sb = new StringBuilder();
         sb.append(" Empty Transaction");
         return sb.toString();
-    }
-
-    @Override
-    public boolean assertions(TransactionResult transactionResult, Exception e){return true; }
-
-    @Override
-    public  String getname(){
-        return name;
-    }
-
-    @Override
-    public boolean assertions(){
-        return true;
     }
 }
