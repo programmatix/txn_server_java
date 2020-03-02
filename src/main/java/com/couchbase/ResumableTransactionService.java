@@ -3,7 +3,6 @@ package com.couchbase;
 import com.couchbase.Logging.LogUtil;
 import com.couchbase.Transactions.*;
 import com.couchbase.Utils.ClusterConnection;
-import com.couchbase.Utils.ResultObject;
 import com.couchbase.client.core.error.TemporaryFailureException;
 import com.couchbase.grpc.protocol.ResumableTransactionServiceGrpc;
 import com.couchbase.grpc.protocol.TxnServer;
@@ -199,32 +198,18 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
     @Override
     public void transactionClose(TxnServer.TransactionGenericRequest request,
                                   StreamObserver<TxnServer.TransactionResultObject> responseObserver) {
-        TxnServer.TransactionResultObject.Builder response =
-                TxnServer.TransactionResultObject.getDefaultInstance().newBuilderForType();
-
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
             ResumableTransactionEmpty cmd = new ResumableTransactionEmpty(true);
-            ResultObject result = txn.shutdownandverify(cmd);
+            TxnServer.TransactionResultObject result = txn.shutdownAndVerify(cmd);
 
-            response.setAtrCollectionPresent(result.atrCollectionPresent);
-            response.setAtrIdPresent(result.atrIdPresent);
-            response.setMutationTokensSize(result.mutationTokensSize);
-            response.setTxnAttemptsSize(result.txnAttemptsSize);
-            response.setAttemptFinalState(result.attemptFinalState);
-            response.setExceptionName(result.exceptionName);
-            response.setAtrCollectionPresent(result.atrCollectionPresent);
-            for(int i =0;i<result.logs.size();i++){
-                response.addLog(result.logs.get(i));
-            }
-
+            responseObserver.onNext(result);
+            responseObserver.onCompleted();
 
         } catch (RuntimeException | InterruptedException err) {
             logger.error("Operation failed during transactionClose due to :  " + err);
-           // response.setSuccess(false);
+            responseObserver.onError(err);
         }
-        responseObserver.onNext(response.build());
-        responseObserver.onCompleted();
     }
 
 
