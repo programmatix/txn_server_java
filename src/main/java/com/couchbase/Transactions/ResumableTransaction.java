@@ -1,5 +1,6 @@
 package com.couchbase.Transactions;
 
+import com.couchbase.InternalDriverFailure;
 import com.couchbase.Logging.LogUtil;
 import com.couchbase.client.core.logging.LogRedaction;
 import com.couchbase.client.core.logging.RedactionLevel;
@@ -12,10 +13,11 @@ import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.error.TransactionFailed;
 import org.slf4j.Logger;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Consumer;
 
 /**
  * Represents a single transaction that's in an ongoing state.
@@ -37,62 +39,91 @@ public class ResumableTransaction {
     private volatile Optional<TransactionResult> transactionResult = Optional.empty();
     private volatile Optional<Exception> exception = Optional.empty();
     private volatile boolean commandResult = false;
-    ResumableTransactionCommand lastCommand;
+    // Some internal driver error has happened on this transaction.  Reserve this solely for
+    // driver problems - e.g. that it doesn't recognize a particular hook or command.
+    private volatile Optional<RuntimeException> commandFatalError = Optional.empty();
+    private volatile Set<String> attemptsSeen = new HashSet<>();
+
+    private void transactionLogic(AttemptContext ctx) {
+        // We're now inside a regular transaction lambda.  This logic is going to wait for commands and execute them
+        // one at a time.
+        boolean done = false;
+
+        while (!done) {
+            attemptsSeen.add(ctx.attemptId());
+            String bp = attemptNumber() + ": ";
+
+            logger.trace(bp + "Waiting for next command");
+            ResumableTransactionCommand next = queue.poll();
+
+            if (next != null ) {
+                // Received a command - insert a doc, commit the txn, etc
+                // Whatever happens next, must call waitForCommandResult.countDown(), as the sender of the command is waiting for
+                // that response
+
+                logger.info(bp + "Received command: " + next);
+
+                try {
+                    next.execute(ctx);
+                    logger.info(bp + "Command was successful");
+                    commandResult = true;
+                    waitForCommandResult.countDown();
+
+                    // Some commands signal the txn is expected to be done at this point, and drop us out of the
+                    // loop.  Note this doesn't include commit/rollback, to allow us to test user error like
+                    // double-committing.
+                    done = next.finishWaitingForCommands();
+
+                    if (!next.isSuccessExpected()) {
+                        logger.warn(bp + "Command succeeded but was meant to fail!");
+                        dump(ctx);
+                    }
+                } catch (RuntimeException e) {
+                    if (e instanceof InternalDriverFailure) {
+                        logger.error("Internal error thrown {}, bailing out", e);
+                        commandFatalError = Optional.of(e);
+                        done = true;
+                        dump(ctx);
+                    }
+                    else {
+                        if (next.isSuccessExpected()) {
+                            logger.warn(bp + "Command threw an unexpected error: " + e.getMessage());
+                            dump(ctx);
+                        } else {
+                            logger.info(bp + "Command threw an error (which was expected): " + e.getMessage());
+                        }
+                    }
+
+                    commandResult = false;
+                    waitForCommandResult.countDown();
+
+                    // Always rethrow e, or transactions won't work
+                    // Why do we need to throw. If we throw e, we will not be able to test negative test cases like rollback after commit etc.
+                    throw e;
+                }
+            }
+            else {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     public ResumableTransaction(Transactions transactionsFactory,
                                 String transactionRef) {
         this.transactionRef = transactionRef;
 
-        Consumer<AttemptContext> lambda = (ctx) -> {
-            // We're now inside a regular transaction lambda.  This logic is going to wait for commands and execute them
-            // one at a time.
-            boolean done = false;
-
-            while (!done) {
-                logger.trace("Waiting for next command");
-                ResumableTransactionCommand next = queue.poll();
-
-                if (next != null ) {
-                    // Received a command - insert a doc, commit the txn, etc
-                    // Whatever happens next, must call waitForCommandResult.countDown(), as the sender of the command is waiting for
-                    // that response
-
-                    logger.info("Received command: " + next);
-
-                    try {
-                        next.execute(ctx);
-                        logger.info("Command was successful");
-                        commandResult = true;
-                        waitForCommandResult.countDown();
-
-                        // Some commands signal the txn is expected to be done at this point, and drop us out of the
-                        // loop
-                        done = next.isTransactionFinished();
-                    } catch (Exception e) {
-                        logger.info("Command threw getClass: "+ e.getMessage());
-                        commandResult = false;
-                        waitForCommandResult.countDown();
-
-                        // Always rethrow e, or transactions won't work
-                        // Why do we need to throw. If we throw e, we will not be able to test negative test cases like rollback after commit etc.
-                        throw e;
-                    }
-                }
-                else {
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
-
         // The lambda needs to be running in its own thread in the background
         handle = new Thread(() -> {
             try {
                 logger.info("Starting txn in separate thread");
-                transactionResult = Optional.of(transactionsFactory.run(lambda));
+
+                // This starts a transaction
+                transactionResult = Optional.of(transactionsFactory.run(this::transactionLogic));
+
                 logger.info("transactionResult:"+transactionResult);
 
             } catch (TransactionFailed err) {
@@ -111,15 +142,34 @@ public class ResumableTransaction {
         handle.start();
     }
 
+    private void dump(AttemptContext ctx) {
+        logger.warn("Dumping logs so far for debugging:");
+        ctx.logger().logs().forEach(l ->
+            logger.info("    " + l.toString()));
+    }
+
+    public int attemptNumber() {
+        return attemptsSeen.size() - 1;
+    }
+
     public boolean executeCommandBlocking(ResumableTransactionCommand cmd) {
         logger.info("Running command " + cmd);
 
-        // TODO probably a neater way of waiting for results
+        commandFatalError.ifPresent(err -> {
+            logger.error("Transaction has previously failed fatally with internal error, no further ops allowed");
+            throw err;
+        });
+
         waitForCommandResult = new CountDownLatch(1);
         queue.add(cmd);
         try {
             waitForCommandResult.await();
             logger.info("Finished command " + cmd + " result= "+ commandResult);
+
+            commandFatalError.ifPresent(err -> {
+                throw err;
+            });
+
             return commandResult;
         } catch (InterruptedException e) {
             logger.warn("Interrupted");
@@ -140,14 +190,15 @@ public class ResumableTransaction {
 
     public TxnServer.TransactionResultObject shutdownAndVerify(ResumableTransactionCommand cmd) throws InterruptedException {
         boolean shutdownSuccess = executeCommandBlocking(cmd);
-        logger.error("shutdownSuccess Status: "+shutdownSuccess);
+        logger.info("shutdownSuccess Status: "+shutdownSuccess);
         if (!shutdownSuccess) {
             throw new IllegalStateException("Failed to close down transaction neatly");
         }
 
         logger.info("Waiting for transaction to finish");
         waitForOverallResult.countDown();
-        logger.info("Transaction is finished");
+        logger.info("Transaction is finished, exception={}, result={}",
+            exception, transactionResult);
 
         TxnServer.TransactionResultObject.Builder response =
             TxnServer.TransactionResultObject.getDefaultInstance().newBuilderForType();
