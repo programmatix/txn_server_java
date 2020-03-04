@@ -1,6 +1,7 @@
 /src/main/java/com/couchbase/sdkd/GatBug.java
 target/*
 /pkgcache/target/
+src/main/java/com/couchbase/grpc/
 *.pyc
 .idea/*
 *.iml
