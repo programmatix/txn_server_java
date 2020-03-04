@@ -3,22 +3,17 @@ package com.couchbase;
 import com.couchbase.Logging.LogUtil;
 import com.couchbase.Transactions.*;
 import com.couchbase.Utils.ClusterConnection;
-import com.couchbase.client.core.error.TemporaryFailureException;
+import com.couchbase.Utils.HooksUtil;
 import com.couchbase.grpc.protocol.ResumableTransactionServiceGrpc;
 import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.transactions.TransactionDurabilityLevel;
 import com.couchbase.transactions.Transactions;
 import com.couchbase.transactions.config.TransactionConfigBuilder;
-import com.couchbase.transactions.error.internal.AbortedAsRequested;
-import com.couchbase.transactions.error.internal.AbortedAsRequestedNoRollbackNoCleanup;
 import com.couchbase.transactions.support.AttemptContextFactory;
-import com.couchbase.transactions.util.TestAttemptContextFactory;
-import com.couchbase.transactions.util.TransactionMock;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -58,6 +53,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
+
     @Override
     public void transactionsFactoryCreate(TxnServer.TransactionsFactoryCreateRequest request,
                                           StreamObserver<TxnServer.TransactionsFactoryCreateResponse> responseObserver) {
@@ -66,44 +62,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
         try {
             logger.info("Creating new Transactions factory");
-            AttemptContextFactory factory = null;
-
-            if (request.getHookCount() != 0) {
-                TransactionMock mock = new TransactionMock();
-
-                for (int i = 0; i < request.getHookCount(); i++) {
-                    final int x = i;
-
-                    RuntimeException err;
-
-                    switch (request.getHookErrorToRaise(x)) {
-                        case FAIL_NO_ROLLBACK:
-                            err = new AbortedAsRequestedNoRollbackNoCleanup();
-                            break;
-                        case FAIL_ROLLBACK:
-                            err = new AbortedAsRequested();
-                            break;
-                        case FAIL_RETRY:
-                            err = new TemporaryFailureException(null);
-                            break;
-                        default:
-                            throw new IllegalStateException("Cannot handle hook error " + request.getHookErrorToRaise(x));
-                    }
-
-                    switch (request.getHook(i)) {
-                        case BEFORE_ATR_COMMIT:
-                            mock.beforeAtrCommit = (ctx) -> {
-                                switch (request.getHookCondition(x)) {
-                                    case ALWAYS:
-                                        return Mono.error(err);
-                                }
-                                return Mono.just(1);
-                            };
-                    }
-                }
-
-                factory = new TestAttemptContextFactory(mock);
-            }
+            AttemptContextFactory factory = HooksUtil.configureHooks(request, connection);
 
             TransactionDurabilityLevel durabilityLevel = TransactionDurabilityLevel.MAJORITY;
             switch (request.getDurability()) {
@@ -200,7 +159,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
                                   StreamObserver<TxnServer.TransactionResultObject> responseObserver) {
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty(true);
+            ResumableTransactionComplete cmd = new ResumableTransactionComplete(true);
             TxnServer.TransactionResultObject result = txn.shutdownAndVerify(cmd);
 
             responseObserver.onNext(result);
@@ -225,7 +184,8 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
             ResumableTransactionInsert cmd = new ResumableTransactionInsert(connection.getBucket().defaultCollection(),
                     request.getDocId(),
-                    request.getContentJson());
+                    request.getContentJson(),
+                    request.getExpectedResult());
             boolean result = txn.executeCommandBlocking(cmd);
             response.setSuccess(result);
         } catch (RuntimeException err) {
@@ -245,7 +205,7 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
         try {
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
 
-            ResumableTransactionEmpty cmd = new ResumableTransactionEmpty(false);
+            ResumableTransactionComplete cmd = new ResumableTransactionComplete(false);
             boolean result = txn.executeCommandBlocking(cmd);
             response.setSuccess(result);
         } catch (RuntimeException err) {
@@ -288,7 +248,8 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
 
             ResumableTransactionUpdate cmd = new ResumableTransactionUpdate(connection.getBucket().defaultCollection(),
                     request.getDocId(),
-                    request.getContentJson());
+                    request.getContentJson(),
+                    request.getExpectedResult());
             boolean result = txn.executeCommandBlocking(cmd);
 
             response.setSuccess(result);
@@ -309,7 +270,8 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
             ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
 
             ResumableTransactionDelete cmd = new ResumableTransactionDelete(connection.getBucket().defaultCollection(),
-                    request.getDocId());
+                    request.getDocId(),
+                    request.getExpectedResult());
             boolean result = txn.executeCommandBlocking(cmd);
 
             response.setSuccess(result);
@@ -342,6 +304,31 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
+
+    public void getTransactionState(com.couchbase.grpc.protocol.TxnServer.TransactionGenericRequest request,
+                                    io.grpc.stub.StreamObserver<com.couchbase.grpc.protocol.TxnServer.TransactionState> responseObserver) {
+        try {
+            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
+
+            TxnServer.TransactionState.Builder response =
+                TxnServer.TransactionState.getDefaultInstance().newBuilderForType();
+
+            // Do a no-op command to make sure ResumableTransaction is in a 'ready for action'
+            // state and hence has a correct attemptNumber
+            ResumableTransactionCommand cmd = new ResumableTransactionNoOp();
+            boolean result = txn.executeCommandBlocking(cmd);
+            assert(result);
+
+            response.setAttemptNumber(txn.attemptNumber());
+
+            responseObserver.onNext(response.build());
+            responseObserver.onCompleted();
+        } catch (RuntimeException err) {
+            logger.error("Operation failed during getTransactionState due to : " + err.getMessage());
+            responseObserver.onError(err);
+        }
+    }
+
 
     public static void main(String[] args) throws IOException, InterruptedException {
         for(int i =0; i<args.length;i++){
