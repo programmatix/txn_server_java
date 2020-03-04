@@ -5,7 +5,6 @@
 package com.couchbase.Utils;
 
 
-import java.util.List;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.grpc.protocol.TxnServer;
@@ -14,7 +13,6 @@ import com.couchbase.grpc.protocol.TxnServer;
 public class ClusterConnection {
     private Cluster cluster;
     private Bucket bucket;
-    List<String> l;
 
 
     public ClusterConnection( TxnServer.conn_info reqData)  {

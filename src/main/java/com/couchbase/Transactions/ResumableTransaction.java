@@ -74,6 +74,7 @@ public class ResumableTransaction {
                         waitForCommandResult.countDown();
 
                         // Always rethrow e, or transactions won't work
+                        // Why do we need to throw. If we throw e, we will not be able to test negative test cases like rollback after commit etc.
                         throw e;
                     }
                 }
@@ -118,7 +119,6 @@ public class ResumableTransaction {
         queue.add(cmd);
         try {
             waitForCommandResult.await();
-          //  result  = cmd.assertions();
             logger.info("Finished command " + cmd + " result= "+ commandResult);
             return commandResult;
         } catch (InterruptedException e) {
@@ -140,7 +140,7 @@ public class ResumableTransaction {
 
     public TxnServer.TransactionResultObject shutdownAndVerify(ResumableTransactionCommand cmd) throws InterruptedException {
         boolean shutdownSuccess = executeCommandBlocking(cmd);
-
+        logger.error("shutdownSuccess Status: "+shutdownSuccess);
         if (!shutdownSuccess) {
             throw new IllegalStateException("Failed to close down transaction neatly");
         }
