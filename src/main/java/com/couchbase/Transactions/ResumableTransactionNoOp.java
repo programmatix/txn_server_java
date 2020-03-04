@@ -1,27 +1,27 @@
 package com.couchbase.Transactions;
-
 import com.couchbase.transactions.AttemptContext;
 
 /**
- * Inserts a doc, in a running {@link ResumableTransaction}
+ * Does nothing, just ensures that a {@link ResumableTransaction} has got to the point
+ * where it's waiting for commands.
+ *
+ * Used for checking state, e.g. attempt count.
  */
-public class ResumableTransactionRollback implements ResumableTransactionCommand {
-
+public class ResumableTransactionNoOp implements ResumableTransactionCommand {
     @Override
     public void execute(AttemptContext ctx) {
-        ctx.rollback();
+        // no-op
     }
 
     @Override
     public boolean isSuccessExpected() {
-        // TODO would be useful for some tests like rollback-after-commit to not hardcode this
         return true;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Rollback Transaction");
+        sb.append("NoOp");
         return sb.toString();
     }
 }

@@ -4,25 +4,28 @@ import com.couchbase.transactions.AttemptContext;
 import org.slf4j.Logger;
 
 /**
- * Completes a running {@link ResumableTransaction}
+ * Completes a running {@link ResumableTransaction}.  This doesn't relate to a transactions API operation, it's
+ * to do with finishing up driver resources.
  *
  * That is, it waits for the transaction to complete successfully or throw an exception, and
  * returns the result of that.
- *
- * It needs to be called after a Commit or Rollback op.
  */
-public class ResumableTransactionEmpty implements ResumableTransactionCommand {
+public class ResumableTransactionComplete implements ResumableTransactionCommand {
     private final Logger logger = LogUtil.getLogger(ResumableTransaction.class);
-    private String name="empty";
     boolean isTransactionFinished;
 
-    public ResumableTransactionEmpty(boolean isTransactionFinished){
+    public ResumableTransactionComplete(boolean isTransactionFinished){
         this.isTransactionFinished = isTransactionFinished;
     }
 
     @Override
-    public boolean isTransactionFinished() {
+    public boolean finishWaitingForCommands() {
         return isTransactionFinished;
+    }
+
+    @Override
+    public boolean isSuccessExpected() {
+        return true;
     }
 
     @Override
