@@ -1,5 +1,6 @@
 package com.couchbase.Transactions;
 import com.couchbase.client.java.Collection;
+import com.couchbase.grpc.protocol.TxnServer;
 import com.couchbase.transactions.AttemptContext;
 
 /**
@@ -8,12 +9,14 @@ import com.couchbase.transactions.AttemptContext;
 public class ResumableTransactionDelete implements ResumableTransactionCommand {
     private final Collection collection;
     private final String id;
-    private String name="delete";
+    private final TxnServer.ExpectedResult expectedResult;
 
     public ResumableTransactionDelete(Collection collection,
-                                      String id) {
+                                      String id,
+                                      TxnServer.ExpectedResult expectedResult) {
         this.collection = collection;
         this.id = id;
+        this.expectedResult = expectedResult;
     }
 
     @Override
@@ -22,11 +25,18 @@ public class ResumableTransactionDelete implements ResumableTransactionCommand {
     }
 
     @Override
+    public boolean isSuccessExpected() {
+        return expectedResult == TxnServer.ExpectedResult.SUCCESS;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Delete{");
         sb.append("id=");
         sb.append(id);
+        sb.append(",expected=");
+        sb.append(expectedResult);
         sb.append("}");
         return sb.toString();
     }
