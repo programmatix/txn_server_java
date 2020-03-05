@@ -197,26 +197,6 @@ public class ResumableTransactionService extends ResumableTransactionServiceGrpc
     }
 
     @Override
-    public void transactionEmpty(TxnServer.TransactionGenericRequest request,
-                                  StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
-        TxnServer.TransactionGenericResponse.Builder response =
-                TxnServer.TransactionGenericResponse.getDefaultInstance().newBuilderForType();
-
-        try {
-            ResumableTransaction txn = resumableTransactions.get(request.getTransactionRef());
-
-            ResumableTransactionComplete cmd = new ResumableTransactionComplete(false);
-            boolean result = txn.executeCommandBlocking(cmd);
-            response.setSuccess(result);
-        } catch (RuntimeException err) {
-            logger.error("Operation failed during transactionEmpty due to : " + err.getMessage());
-            response.setSuccess(false);
-        }
-        responseObserver.onNext(response.build());
-        responseObserver.onCompleted();
-    }
-
-    @Override
     public void transactionRollback(TxnServer.TransactionGenericRequest request,
                                  StreamObserver<TxnServer.TransactionGenericResponse> responseObserver) {
         TxnServer.TransactionGenericResponse.Builder response =

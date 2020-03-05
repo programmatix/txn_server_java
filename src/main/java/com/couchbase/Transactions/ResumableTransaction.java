@@ -2,6 +2,7 @@ package com.couchbase.Transactions;
 
 import com.couchbase.InternalDriverFailure;
 import com.couchbase.Logging.LogUtil;
+import com.couchbase.Utils.ResultsUtil;
 import com.couchbase.client.core.logging.LogRedaction;
 import com.couchbase.client.core.logging.RedactionLevel;
 import com.couchbase.client.java.ReactiveCollection;
@@ -190,7 +191,7 @@ public class ResumableTransaction {
 
     public TxnServer.TransactionResultObject shutdownAndVerify(ResumableTransactionCommand cmd) throws InterruptedException {
         boolean shutdownSuccess = executeCommandBlocking(cmd);
-        logger.info("shutdownSuccess Status: "+shutdownSuccess);
+        logger.info("shutdownSuccess Status: " + shutdownSuccess);
         if (!shutdownSuccess) {
             throw new IllegalStateException("Failed to close down transaction neatly");
         }
@@ -200,63 +201,7 @@ public class ResumableTransaction {
         logger.info("Transaction is finished, exception={}, result={}",
             exception, transactionResult);
 
-        TxnServer.TransactionResultObject.Builder response =
-            TxnServer.TransactionResultObject.getDefaultInstance().newBuilderForType();
-
-        exception.ifPresent(ex -> {
-            // TODO need to map this more generically across C++ and Java
-            response.setExceptionName(ex.getMessage());
-        });
-
-        transactionResult.ifPresent(tr -> {
-
-            TransactionAttempt mostRecent = tr.attempts().get(tr.attempts().size() - 1);
-
-            response.setMutationTokensSize(tr.mutationTokens().size())
-                .setAtrCollection(mostRecent.atrCollection()
-                    .map(ReactiveCollection::name).orElse("not available"))
-                .setAtrId(mostRecent.atrId().orElse("not available"));
-
-            for(int i = 0; i < tr.attempts().size(); i ++) {
-                TransactionAttempt ta = tr.attempts().get(i);
-
-                TxnServer.AttemptStates attemptState;
-                switch (ta.finalState()) {
-                    case ABORTED:
-                        attemptState = TxnServer.AttemptStates.ABORTED;
-                        break;
-                    case COMMITTED:
-                        attemptState = TxnServer.AttemptStates.COMMITTED;
-                        break;
-                    case NOT_STARTED:
-                        attemptState = TxnServer.AttemptStates.NOT_STARTED;
-                        break;
-                    case COMPLETED:
-                        attemptState = TxnServer.AttemptStates.COMPLETED;
-                        break;
-                    case PENDING:
-                        attemptState = TxnServer.AttemptStates.PENDING;
-                        break;
-                    case ROLLED_BACK:
-                        attemptState = TxnServer.AttemptStates.ROLLED_BACK;
-                        break;
-                    default:
-                        throw new IllegalStateException("Bad state " + ta.finalState());
-                }
-
-                response.addAttempts(TxnServer.TransactionAttempt.newBuilder()
-                    .setState(attemptState)
-                    .setAttemptId(ta.attemptId())
-                    .build());
-            }
-
-            // Force that log redaction has been enabled
-            LogRedaction.setRedactionLevel(RedactionLevel.PARTIAL);
-
-            tr.log().logs().forEach(l ->
-                response.addLog(l.toString()));
-        });
-
-        return response.build();
+        return ResultsUtil.createResult(exception, transactionResult);
     }
+
 }

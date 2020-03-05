@@ -26,7 +26,7 @@ public class ResumableTransactionDelete implements ResumableTransactionCommand {
 
     @Override
     public boolean isSuccessExpected() {
-        return expectedResult == TxnServer.ExpectedResult.SUCCESS;
+        return expectedResult == TxnServer.ExpectedResult.EXPECT_SUCCESS;
     }
 
     @Override
